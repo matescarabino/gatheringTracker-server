@@ -1,0 +1,47 @@
+import { DataTypes, Model } from 'sequelize';
+import sequelize from '../config/database';
+
+class Juntada extends Model {
+    public id!: number;
+    public fecha!: Date;
+    public fotoJuntada!: string;
+    public idSede!: number;
+    public isDeleted!: boolean;
+}
+
+Juntada.init(
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
+            primaryKey: true,
+        },
+        fecha: {
+            type: DataTypes.DATE,
+            allowNull: false,
+        },
+        fotoJuntada: {
+            type: DataTypes.STRING,
+            allowNull: true,
+            comment: 'Path to image file'
+        },
+        isDeleted: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false
+        },
+        idSede: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'Sedes',
+                key: 'id'
+            }
+        },
+    },
+    {
+        sequelize,
+        tableName: 'Juntadas',
+    }
+);
+
+export default Juntada;
