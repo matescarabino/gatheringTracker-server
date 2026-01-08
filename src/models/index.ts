@@ -27,7 +27,7 @@ Juntada.hasMany(DetalleComida, { foreignKey: 'idJuntada' });
 DetalleComida.belongsTo(Juntada, { foreignKey: 'idJuntada' });
 
 DetalleComida.belongsTo(Comida, { foreignKey: 'idComida' });
-DetalleComida.belongsTo(Categoria, { foreignKey: 'idCategoria' });
+DetalleComida.belongsTo(Categoria, { foreignKey: 'idCategoria', as: 'Categoria' });
 
 // Asistencia
 Juntada.hasMany(Asistencia, { foreignKey: 'idJuntada' });

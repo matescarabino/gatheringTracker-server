@@ -12,7 +12,7 @@ export const getJuntadas = async (req: Request, res: Response) => {
                     model: DetalleComida,
                     include: [
                         { model: Comida, attributes: ['nombre'] },
-                        { model: Categoria, attributes: ['nombre'] }
+                        { model: Categoria, as: 'Categoria', attributes: ['nombre'] }
                     ]
                 }
             ],
@@ -34,7 +34,7 @@ export const getJuntadaById = async (req: Request, res: Response) => {
                     model: DetalleComida,
                     include: [
                         { model: Comida },
-                        { model: Categoria }
+                        { model: Categoria, as: 'Categoria' }
                     ]
                 },
                 {
