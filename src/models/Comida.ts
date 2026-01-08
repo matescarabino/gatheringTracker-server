@@ -5,6 +5,7 @@ class Comida extends Model {
     public id!: number;
     public nombre!: string;
     public idCategoria!: number;
+    public tipo!: 'Pedido' | 'Cocinado';
     public isDeleted!: boolean;
 }
 
@@ -26,6 +27,11 @@ Comida.init(
                 model: 'Categorias',
                 key: 'id'
             }
+        },
+        tipo: {
+            type: DataTypes.ENUM('Pedido', 'Cocinado'),
+            allowNull: false,
+            defaultValue: 'Cocinado'
         },
         isDeleted: {
             type: DataTypes.BOOLEAN,

@@ -15,8 +15,8 @@ export const getComidas = async (req: Request, res: Response) => {
 
 export const createComida = async (req: Request, res: Response) => {
     try {
-        const { nombre, idCategoria } = req.body;
-        const newComida = await Comida.create({ nombre, idCategoria });
+        const { nombre, idCategoria, tipo } = req.body;
+        const newComida = await Comida.create({ nombre, idCategoria, tipo });
         res.status(201).json(newComida);
     } catch (error) {
         res.status(500).json({ message: 'Error creating comida', error });
@@ -26,8 +26,8 @@ export const createComida = async (req: Request, res: Response) => {
 export const updateComida = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { nombre, idCategoria } = req.body;
-        const [updated] = await Comida.update({ nombre, idCategoria }, { where: { id } });
+        const { nombre, idCategoria, tipo } = req.body;
+        const [updated] = await Comida.update({ nombre, idCategoria, tipo }, { where: { id } });
         if (updated) {
             const updatedComida = await Comida.findByPk(id);
             res.json(updatedComida);

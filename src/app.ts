@@ -26,7 +26,7 @@ const startServer = async () => {
         console.log('Database connected.');
 
         // Sync models (alter: true updates schema if changed, force: false keeps data)
-        await sequelize.sync({ alter: false });
+        await sequelize.sync({ alter: true });
         console.log('Database synced.');
 
         app.listen(port, () => {
