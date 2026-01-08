@@ -1,18 +1,25 @@
 import Sede from './Sede';
-import Categoria from './Categoria';
 import Comida from './Comida';
 import Persona from './Persona';
 import Juntada from './Juntada';
 import Asistencia from './Asistencia';
 import DetalleComida from './DetalleComida';
+import Usuario from './Usuario';
+import Grupo from './Grupo';
 
 // Relaciones
 
-// Comida - Categoria (Legacy or implied? Removed direct FK use in Juntada context, 
-// but Comida might still have idCategoria as default category?)
-// Let's keep existing if valid, but Juntada uses DetalleComida now.
-Categoria.hasMany(Comida, { foreignKey: 'idCategoria' });
-Comida.belongsTo(Categoria, { foreignKey: 'idCategoria' });
+// Usuario - Grupo
+Usuario.hasMany(Grupo, { foreignKey: 'adminId' });
+Grupo.belongsTo(Usuario, { foreignKey: 'adminId' });
+
+// Grupo scopes (Tenancy)
+const tenancyModels = [Juntada, Sede, Persona, Comida];
+
+tenancyModels.forEach((Model: any) => {
+    Grupo.hasMany(Model, { foreignKey: 'grupoId' });
+    Model.belongsTo(Grupo, { foreignKey: 'grupoId' });
+});
 
 // Juntada - Sede
 Sede.hasMany(Juntada, { foreignKey: 'idSede' });
@@ -27,7 +34,6 @@ Juntada.hasMany(DetalleComida, { foreignKey: 'idJuntada' });
 DetalleComida.belongsTo(Juntada, { foreignKey: 'idJuntada' });
 
 DetalleComida.belongsTo(Comida, { foreignKey: 'idComida' });
-DetalleComida.belongsTo(Categoria, { foreignKey: 'idCategoria', as: 'Categoria' });
 
 // Asistencia
 Juntada.hasMany(Asistencia, { foreignKey: 'idJuntada' });
@@ -38,10 +44,11 @@ Asistencia.belongsTo(Persona, { foreignKey: 'idPersona' });
 
 export {
     Sede,
-    Categoria,
     Comida,
     Persona,
     Juntada,
     Asistencia,
-    DetalleComida
+    DetalleComida,
+    Usuario,
+    Grupo
 };

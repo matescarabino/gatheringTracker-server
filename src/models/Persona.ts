@@ -6,6 +6,7 @@ class Persona extends Model {
     public nombre!: string;
     public apodo!: string;
     public fechaNacimiento!: Date | null;
+    public grupoId!: number;
     public isDeleted!: boolean;
 }
 
@@ -31,6 +32,14 @@ Persona.init(
         isDeleted: {
             type: DataTypes.BOOLEAN,
             defaultValue: false
+        },
+        grupoId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'Grupos',
+                key: 'id'
+            }
         },
     },
     {

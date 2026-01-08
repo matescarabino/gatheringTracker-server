@@ -1,11 +1,17 @@
+/// <reference path="../types/express.d.ts" />
 import { Request, Response } from 'express';
-import { Comida, Categoria } from '../models';
+import { Comida } from '../models';
 
 export const getComidas = async (req: Request, res: Response) => {
     try {
+        const { grupoId } = req;
+        if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
         const comidas = await Comida.findAll({
-            where: { isDeleted: false },
-            include: [{ model: Categoria, attributes: ['nombre'] }]
+            where: {
+                isDeleted: false,
+                grupoId
+            }
         });
         res.json(comidas);
     } catch (error) {
@@ -15,8 +21,15 @@ export const getComidas = async (req: Request, res: Response) => {
 
 export const createComida = async (req: Request, res: Response) => {
     try {
-        const { nombre, idCategoria, tipo } = req.body;
-        const newComida = await Comida.create({ nombre, idCategoria, tipo });
+        const { nombre, tipo } = req.body;
+        const { grupoId } = req;
+        if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        const newComida = await Comida.create({
+            nombre,
+            tipo,
+            grupoId
+        });
         res.status(201).json(newComida);
     } catch (error) {
         res.status(500).json({ message: 'Error creating comida', error });
@@ -26,13 +39,20 @@ export const createComida = async (req: Request, res: Response) => {
 export const updateComida = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { nombre, idCategoria, tipo } = req.body;
-        const [updated] = await Comida.update({ nombre, idCategoria, tipo }, { where: { id } });
+        const { nombre, tipo } = req.body;
+        const { grupoId } = req;
+        if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        const [updated] = await Comida.update(
+            { nombre, tipo },
+            { where: { id, grupoId } } // Security: only update if belongs to group
+        );
+
         if (updated) {
             const updatedComida = await Comida.findByPk(id);
             res.json(updatedComida);
         } else {
-            res.status(404).json({ message: 'Comida not found' });
+            res.status(404).json({ message: 'Comida not found or access denied' });
         }
     } catch (error) {
         res.status(500).json({ message: 'Error updating comida', error });
@@ -42,11 +62,18 @@ export const updateComida = async (req: Request, res: Response) => {
 export const deleteComida = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const [updated] = await Comida.update({ isDeleted: true }, { where: { id } });
+        const { grupoId } = req;
+        if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        const [updated] = await Comida.update(
+            { isDeleted: true },
+            { where: { id, grupoId } }
+        );
+
         if (updated) {
             res.status(204).send();
         } else {
-            res.status(404).json({ message: 'Comida not found' });
+            res.status(404).json({ message: 'Comida not found or access denied' });
         }
     } catch (error) {
         res.status(500).json({ message: 'Error deleting comida', error });

@@ -1,5 +1,5 @@
 import sequelize from './config/database';
-import { Sede, Categoria, Comida, Persona } from './models';
+import { Sede, Comida, Persona } from './models';
 
 const seed = async () => {
     try {
@@ -15,13 +15,9 @@ const seed = async () => {
         await Persona.findOrCreate({ where: { nombre: 'Juan' }, defaults: { nombre: 'Juan', apodo: 'Juancito' } });
         await Persona.findOrCreate({ where: { nombre: 'Pedro' }, defaults: { nombre: 'Pedro', apodo: 'Pepe' } });
 
-        // 3. Categorias
-        const [catAsado] = await Categoria.findOrCreate({ where: { nombre: 'Asado' }, defaults: { nombre: 'Asado' } });
-        const [catPasta] = await Categoria.findOrCreate({ where: { nombre: 'Pastas' }, defaults: { nombre: 'Pastas' } });
-
-        // 4. Comidas
-        await Comida.findOrCreate({ where: { nombre: 'Asadazo Completo' }, defaults: { nombre: 'Asadazo Completo', idCategoria: catAsado.id } });
-        await Comida.findOrCreate({ where: { nombre: 'Sorrentinos' }, defaults: { nombre: 'Sorrentinos', idCategoria: catPasta.id } });
+        // 3. Comidas
+        await Comida.findOrCreate({ where: { nombre: 'Asadazo Completo' }, defaults: { nombre: 'Asadazo Completo', tipo: 'Cocinado' } });
+        await Comida.findOrCreate({ where: { nombre: 'Sorrentinos' }, defaults: { nombre: 'Sorrentinos', tipo: 'Cocinado' } });
 
         console.log('Seeding completed successfully.');
         process.exit(0);

@@ -5,7 +5,7 @@ class DetalleComida extends Model {
     public id!: number;
     public idJuntada!: number;
     public idComida!: number;
-    public idCategoria!: number;
+    public categoria!: 'Almuerzo' | 'Merienda' | 'Cena';
 }
 
 DetalleComida.init(
@@ -31,13 +31,10 @@ DetalleComida.init(
                 key: 'id'
             }
         },
-        idCategoria: {
-            type: DataTypes.INTEGER,
+        categoria: {
+            type: DataTypes.ENUM('Almuerzo', 'Merienda', 'Cena'),
             allowNull: false,
-            references: {
-                model: 'Categorias',
-                key: 'id'
-            }
+            defaultValue: 'Cena'
         },
     },
     {

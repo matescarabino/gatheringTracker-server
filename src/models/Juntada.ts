@@ -6,6 +6,7 @@ class Juntada extends Model {
     public fecha!: Date;
     public fotoJuntada!: string;
     public idSede!: number;
+    public grupoId!: number;
     public isDeleted!: boolean;
 }
 
@@ -34,6 +35,14 @@ Juntada.init(
             allowNull: false,
             references: {
                 model: 'Sedes',
+                key: 'id'
+            }
+        },
+        grupoId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'Grupos',
                 key: 'id'
             }
         },

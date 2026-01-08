@@ -4,8 +4,9 @@ import path from 'path';
 import * as sedeController from '../controllers/sedeController';
 import * as personaController from '../controllers/personaController';
 import * as comidaController from '../controllers/comidaController';
-import * as categoriaController from '../controllers/categoriaController';
 import * as juntadaController from '../controllers/juntadaController';
+import authRouter from './auth';
+import { identifyUser, requireAuth, verifyGroup } from '../middleware/auth';
 
 const router = Router();
 
@@ -22,33 +23,47 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Public/Auth Routes (No group restriction yet, specific middleware inside)
+router.use('/auth', authRouter);
+
+// Protected Data Routes
+// 1. Identify User (sets req.usuario if token present)
+// 2. Verify Group (Checks req.usuario or x-group-code, sets req.grupoId)
+// Only apply verifyGroup to endpoints that NEED group context.
+// Authentication routes don't need it.
+
+router.use(identifyUser); // Always try to identify
+// router.use(verifyGroup); // Applying globally? 
+// No, auth routes should NOT use verifyGroup.
+// But we mounted authRouter before verifyGroup could be applied if we used router.use().
+// But we want verifyGroup for all data routes below.
+
+// Filter middleware for paths below
+const globalMiddleware = [identifyUser, verifyGroup];
+
 // Sedes
-router.get('/sedes', sedeController.getSedes);
-router.post('/sedes', sedeController.createSede);
-router.put('/sedes/:id', sedeController.updateSede);
-router.delete('/sedes/:id', sedeController.deleteSede);
+router.get('/sedes', ...globalMiddleware, sedeController.getSedes);
+router.post('/sedes', ...globalMiddleware, requireAuth, sedeController.createSede);
+router.put('/sedes/:id', ...globalMiddleware, requireAuth, sedeController.updateSede);
+router.delete('/sedes/:id', ...globalMiddleware, requireAuth, sedeController.deleteSede);
 
 // Personas
-router.get('/personas', personaController.getPersonas);
-router.post('/personas', personaController.createPersona);
-router.put('/personas/:id', personaController.updatePersona);
-router.delete('/personas/:id', personaController.deletePersona);
-
-// Categorias
-router.get('/categorias', categoriaController.getCategorias);
-router.post('/categorias', categoriaController.createCategoria);
+router.get('/personas', ...globalMiddleware, personaController.getPersonas);
+router.post('/personas', ...globalMiddleware, requireAuth, personaController.createPersona);
+router.put('/personas/:id', ...globalMiddleware, requireAuth, personaController.updatePersona);
+router.delete('/personas/:id', ...globalMiddleware, requireAuth, personaController.deletePersona);
 
 // Comidas
-router.get('/comidas', comidaController.getComidas);
-router.post('/comidas', comidaController.createComida);
-router.put('/comidas/:id', comidaController.updateComida);
-router.delete('/comidas/:id', comidaController.deleteComida);
+router.get('/comidas', ...globalMiddleware, comidaController.getComidas);
+router.post('/comidas', ...globalMiddleware, requireAuth, comidaController.createComida);
+router.put('/comidas/:id', ...globalMiddleware, requireAuth, comidaController.updateComida);
+router.delete('/comidas/:id', ...globalMiddleware, requireAuth, comidaController.deleteComida);
 
 // Juntadas
-router.get('/juntadas', juntadaController.getJuntadas);
-router.get('/juntadas/:id', juntadaController.getJuntadaById);
-router.post('/juntadas', juntadaController.createJuntada);
-router.put('/juntadas/:id', juntadaController.updateJuntada);
-router.delete('/juntadas/:id', juntadaController.deleteJuntada);
+router.get('/juntadas', ...globalMiddleware, juntadaController.getJuntadas);
+router.get('/juntadas/:id', ...globalMiddleware, juntadaController.getJuntadaById);
+router.post('/juntadas', ...globalMiddleware, requireAuth, juntadaController.createJuntada);
+router.put('/juntadas/:id', ...globalMiddleware, requireAuth, juntadaController.updateJuntada);
+router.delete('/juntadas/:id', ...globalMiddleware, requireAuth, juntadaController.deleteJuntada);
 
 export default router;

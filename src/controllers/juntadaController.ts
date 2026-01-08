@@ -1,19 +1,26 @@
+/// <reference path="../types/express.d.ts" />
 import { Request, Response } from 'express';
-import { Juntada, Sede, Comida, Asistencia, Persona, DetalleComida, Categoria } from '../models';
+import { Juntada, Sede, Comida, Asistencia, Persona, DetalleComida } from '../models';
 import sequelize from '../config/database';
 
 export const getJuntadas = async (req: Request, res: Response) => {
     try {
+        const { grupoId } = req;
+        if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
         const juntadas = await Juntada.findAll({
-            where: { isDeleted: false },
+            where: { isDeleted: false, grupoId },
             include: [
                 { model: Sede, attributes: ['nombre'] },
                 {
                     model: DetalleComida,
                     include: [
-                        { model: Comida, attributes: ['nombre'] },
-                        { model: Categoria, as: 'Categoria', attributes: ['nombre'] }
+                        { model: Comida, attributes: ['nombre'] }
                     ]
+                },
+                {
+                    model: Asistencia,
+                    include: [{ model: Persona, attributes: ['nombre', 'apodo'] }]
                 }
             ],
             order: [['fecha', 'DESC']]
@@ -27,14 +34,17 @@ export const getJuntadas = async (req: Request, res: Response) => {
 export const getJuntadaById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const juntada = await Juntada.findByPk(id, {
+        const { grupoId } = req;
+        if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        const juntada = await Juntada.findOne({
+            where: { id, grupoId },
             include: [
                 { model: Sede },
                 {
                     model: DetalleComida,
                     include: [
-                        { model: Comida },
-                        { model: Categoria, as: 'Categoria' }
+                        { model: Comida }
                     ]
                 },
                 {
@@ -45,7 +55,7 @@ export const getJuntadaById = async (req: Request, res: Response) => {
         });
 
         if (!juntada) {
-            res.status(404).json({ message: 'Juntada not found' });
+            res.status(404).json({ message: 'Juntada not found or access denied' });
             return;
         }
 
@@ -59,11 +69,14 @@ export const createJuntada = async (req: Request, res: Response) => {
     const t = await sequelize.transaction();
     try {
         const { fecha, idSede, asistencias, detalles, fotoJuntada } = req.body;
+        const { grupoId } = req;
+        if (!grupoId) return res.status(400).json({ error: 'Group context required' });
 
         const newJuntada = await Juntada.create({
             fecha,
             idSede,
-            fotoJuntada
+            fotoJuntada,
+            grupoId
         }, { transaction: t });
 
         // Handle Details (Comidas + Categorias)
@@ -81,7 +94,7 @@ export const createJuntada = async (req: Request, res: Response) => {
             const detalleRecords = parsedDetalles.map((d: any) => ({
                 idJuntada: newJuntada.id,
                 idComida: d.idComida,
-                idCategoria: d.idCategoria
+                categoria: d.categoria // Now string
             }));
             await DetalleComida.bulkCreate(detalleRecords, { transaction: t });
         }
@@ -117,11 +130,18 @@ export const createJuntada = async (req: Request, res: Response) => {
 export const deleteJuntada = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const [updated] = await Juntada.update({ isDeleted: true }, { where: { id } });
+        const { grupoId } = req;
+        if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        const [updated] = await Juntada.update(
+            { isDeleted: true },
+            { where: { id, grupoId } }
+        );
+
         if (updated) {
             res.status(204).send();
         } else {
-            res.status(404).json({ message: 'Juntada not found' });
+            res.status(404).json({ message: 'Juntada not found or access denied' });
         }
     } catch (error) {
         res.status(500).json({ message: 'Error deleting juntada', error });
@@ -133,11 +153,17 @@ export const updateJuntada = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { fecha, idSede, asistencias, detalles, fotoJuntada } = req.body;
+        const { grupoId } = req;
+        if (!grupoId) {
+            await t.rollback();
+            return res.status(400).json({ error: 'Group context required' });
+        }
 
-        const juntada = await Juntada.findByPk(id);
+        const juntada = await Juntada.findOne({ where: { id, grupoId } });
+
         if (!juntada) {
             await t.rollback();
-            res.status(404).json({ message: 'Juntada not found' });
+            res.status(404).json({ message: 'Juntada not found or access denied' });
             return;
         }
 
@@ -163,7 +189,7 @@ export const updateJuntada = async (req: Request, res: Response) => {
             const detalleRecords = parsedDetalles.map((d: any) => ({
                 idJuntada: id,
                 idComida: d.idComida,
-                idCategoria: d.idCategoria
+                categoria: d.categoria // Now string
             }));
             await DetalleComida.bulkCreate(detalleRecords, { transaction: t });
         }

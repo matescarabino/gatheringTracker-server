@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import sequelize from './config/database';
-import { Sede, Categoria, Comida, Persona, Juntada, Asistencia } from './models';
+import { Sede, Comida, Persona, Juntada, Asistencia } from './models';
 
 import apiRouter from './routes/api';
 
@@ -17,7 +17,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api', apiRouter);
 
 app.get('/', (req, res) => {
-    res.send('Rushtadas Backend Running');
+    res.send('LaJuntada Backend Running');
 });
 
 // Sync Database and Start Server

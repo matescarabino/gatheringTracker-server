@@ -6,6 +6,7 @@ class Sede extends Model {
     public nombre!: string;
     public direccion!: string;
     public idPersona!: number | null;
+    public grupoId!: number;
     public isDeleted!: boolean;
 }
 
@@ -35,6 +36,14 @@ Sede.init(
         isDeleted: {
             type: DataTypes.BOOLEAN,
             defaultValue: false
+        },
+        grupoId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'Grupos',
+                key: 'id'
+            }
         },
     },
     {
