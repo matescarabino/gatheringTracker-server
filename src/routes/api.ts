@@ -47,8 +47,8 @@ router.delete('/comidas/:id', comidaController.deleteComida);
 // Juntadas
 router.get('/juntadas', juntadaController.getJuntadas);
 router.get('/juntadas/:id', juntadaController.getJuntadaById);
-router.post('/juntadas', upload.single('fotoJuntada'), juntadaController.createJuntada);
-router.put('/juntadas/:id', upload.single('fotoJuntada'), juntadaController.updateJuntada);
+router.post('/juntadas', juntadaController.createJuntada);
+router.put('/juntadas/:id', juntadaController.updateJuntada);
 router.delete('/juntadas/:id', juntadaController.deleteJuntada);
 
 export default router;

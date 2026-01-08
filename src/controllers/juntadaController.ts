@@ -58,9 +58,7 @@ export const getJuntadaById = async (req: Request, res: Response) => {
 export const createJuntada = async (req: Request, res: Response) => {
     const t = await sequelize.transaction();
     try {
-        const { fecha, idSede, asistencias, detalles } = req.body;
-        // Multer saves the file to req.file
-        const fotoJuntada = req.file ? `/uploads/${req.file.filename}` : null;
+        const { fecha, idSede, asistencias, detalles, fotoJuntada } = req.body;
 
         const newJuntada = await Juntada.create({
             fecha,
@@ -134,8 +132,7 @@ export const updateJuntada = async (req: Request, res: Response) => {
     const t = await sequelize.transaction();
     try {
         const { id } = req.params;
-        const { fecha, idSede, asistencias, detalles } = req.body;
-        const fotoJuntada = req.file ? `/uploads/${req.file.filename}` : undefined;
+        const { fecha, idSede, asistencias, detalles, fotoJuntada } = req.body;
 
         const juntada = await Juntada.findByPk(id);
         if (!juntada) {
@@ -147,7 +144,7 @@ export const updateJuntada = async (req: Request, res: Response) => {
         await juntada.update({
             fecha,
             idSede,
-            ...(fotoJuntada && { fotoJuntada })
+            fotoJuntada
         }, { transaction: t });
 
         // Update Detalles

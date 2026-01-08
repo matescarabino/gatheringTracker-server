@@ -21,9 +21,9 @@ Juntada.init(
             allowNull: false,
         },
         fotoJuntada: {
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT,
             allowNull: true,
-            comment: 'Path to image file'
+            comment: 'Base64 image string'
         },
         isDeleted: {
             type: DataTypes.BOOLEAN,
