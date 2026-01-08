@@ -26,7 +26,13 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api', apiRouter);
 
 app.get('/', (req, res) => {
-    res.send('LaJuntada Backend Running');
+    res.json({
+        message: 'LaJuntada Backend Running',
+        status: 'online',
+        environment: process.env.NODE_ENV || 'development',
+        time: new Date().toISOString(),
+        allowedOrigins: allowedOrigins
+    });
 });
 
 // Sync Database and Start Server
