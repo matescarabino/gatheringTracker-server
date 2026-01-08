@@ -8,7 +8,6 @@ class Asistencia extends Model {
     public lavo!: boolean;
     public cocino!: boolean;
     public compras!: boolean;
-    public postre!: boolean;
 }
 
 Asistencia.init(
@@ -43,10 +42,6 @@ Asistencia.init(
             defaultValue: false,
         },
         compras: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: false,
-        },
-        postre: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
         },
