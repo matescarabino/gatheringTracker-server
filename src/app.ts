@@ -9,8 +9,14 @@ import apiRouter from './routes/api';
 const app = express();
 const port = process.env.PORT || 2404;
 
+const allowedOrigins = [
+    'http://localhost:2403',
+    'http://localhost:3000',
+    ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [])
+];
+
 app.use(cors({
-    origin: ['http://localhost:2403', 'http://localhost:3000'], // Allow new port and old port just in case
+    origin: allowedOrigins,
     credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
