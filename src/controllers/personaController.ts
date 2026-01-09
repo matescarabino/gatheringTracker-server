@@ -16,11 +16,44 @@ export const getPersonas = async (req: Request, res: Response) => {
     }
 };
 
+import { Op } from 'sequelize';
+import sequelize from '../config/database';
+
 export const createPersona = async (req: Request, res: Response) => {
     try {
         const { nombre, apodo, fechaNacimiento } = req.body;
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        // Validations
+        if (!nombre || nombre.length < 3 || nombre.length > 50) {
+            return res.status(400).json({ error: 'El nombre debe tener entre 3 y 50 caracteres.' });
+        }
+        if (apodo && apodo.length > 30) {
+            return res.status(400).json({ error: 'El apodo no puede superar los 30 caracteres.' });
+        }
+
+        // Check Duplicate (Name OR Nickname in same group)
+        // We want to avoid two people named "Mateo" or two people nicknamed "Teo".
+
+        const whereClause: any = {
+            grupoId,
+            [Op.or]: [
+                sequelize.where(sequelize.fn('LOWER', sequelize.col('nombre')), sequelize.fn('LOWER', nombre))
+            ]
+        };
+
+        if (apodo) {
+            whereClause[Op.or].push(
+                sequelize.where(sequelize.fn('LOWER', sequelize.col('apodo')), sequelize.fn('LOWER', apodo))
+            );
+        }
+
+        const existing = await Persona.findOne({ where: whereClause });
+
+        if (existing) {
+            return res.status(400).json({ error: 'Ya existe una persona con ese nombre o apodo.' });
+        }
 
         const newPersona = await Persona.create({
             nombre,

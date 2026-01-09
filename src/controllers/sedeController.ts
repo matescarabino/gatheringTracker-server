@@ -17,11 +17,36 @@ export const getSedes = async (req: Request, res: Response) => {
     }
 };
 
+import { Op } from 'sequelize';
+import sequelize from '../config/database';
+
 export const createSede = async (req: Request, res: Response) => {
     try {
         const { nombre, direccion, idPersona } = req.body;
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        // Validations
+        if (!nombre || nombre.length < 3 || nombre.length > 50) {
+            return res.status(400).json({ error: 'El nombre debe tener entre 3 y 50 caracteres.' });
+        }
+
+        // Check Duplicate (Case Insensitive in same group)
+        const existing = await Sede.findOne({
+            where: {
+                grupoId,
+                [Op.and]: [
+                    sequelize.where(
+                        sequelize.fn('LOWER', sequelize.col('nombre')),
+                        sequelize.fn('LOWER', nombre)
+                    )
+                ]
+            } as any
+        });
+
+        if (existing) {
+            return res.status(400).json({ error: 'Ya existe una sede con ese nombre.' });
+        }
 
         const newSede = await Sede.create({ nombre, direccion, idPersona, grupoId });
         const sedeWithOwner = await Sede.findByPk(newSede.id, { include: ['Dueño'] });
@@ -37,6 +62,29 @@ export const updateSede = async (req: Request, res: Response) => {
         const { nombre, direccion, idPersona } = req.body;
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        // Validations
+        if (!nombre || nombre.length < 3 || nombre.length > 50) {
+            return res.status(400).json({ error: 'El nombre debe tener entre 3 y 50 caracteres.' });
+        }
+
+        // Check Duplicate (Case Insensitive in same group, excluding current ID)
+        const existing = await Sede.findOne({
+            where: {
+                grupoId,
+                id: { [Op.ne]: id },
+                [Op.and]: [
+                    sequelize.where(
+                        sequelize.fn('LOWER', sequelize.col('nombre')),
+                        sequelize.fn('LOWER', nombre)
+                    )
+                ]
+            } as any
+        });
+
+        if (existing) {
+            return res.status(400).json({ error: 'Ya existe una sede con ese nombre.' });
+        }
 
         const [updated] = await Sede.update(
             { nombre, direccion, idPersona },

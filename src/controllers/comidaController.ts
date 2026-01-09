@@ -1,6 +1,9 @@
 /// <reference path="../types/express.d.ts" />
 import { Request, Response } from 'express';
 import { Comida } from '../models';
+import sequelize from '../config/database';
+// @ts-ignore
+import { Op } from 'sequelize';
 
 export const getComidas = async (req: Request, res: Response) => {
     try {
@@ -24,6 +27,40 @@ export const createComida = async (req: Request, res: Response) => {
         const { nombre, tipo } = req.body;
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        // Validations
+        if (!nombre || nombre.length < 3 || nombre.length > 50) {
+            return res.status(400).json({ error: 'El nombre debe tener entre 3 y 50 caracteres.' });
+        }
+
+        // Check Duplicate (Case Insensitive)
+        const existing = await Comida.findOne({
+            where: sequelize.where(
+                sequelize.fn('LOWER', sequelize.col('nombre')),
+                sequelize.fn('LOWER', nombre)
+            ) as any
+        });
+
+        // Ensure checking within the same group? 
+        // Wait, Comida model has grupoId? Yes, createComida adds it.
+        // The check above searches GLOBALLY if I don't add grupoId filter.
+        // Let's refine the query.
+
+        const existingInGroup = await Comida.findOne({
+            where: {
+                grupoId,
+                [Op.and]: [
+                    sequelize.where(
+                        sequelize.fn('LOWER', sequelize.col('nombre')),
+                        sequelize.fn('LOWER', nombre)
+                    )
+                ]
+            } as any
+        });
+
+        if (existingInGroup) {
+            return res.status(400).json({ error: 'Ya existe una comida con ese nombre.' });
+        }
 
         const newComida = await Comida.create({
             nombre,

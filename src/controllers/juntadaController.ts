@@ -11,11 +11,14 @@ export const getJuntadas = async (req: Request, res: Response) => {
         const juntadas = await Juntada.findAll({
             where: { isDeleted: false, grupoId },
             include: [
-                { model: Sede, attributes: ['nombre'] },
+                {
+                    model: Sede,
+                    include: [{ model: Persona, as: 'Dueño', attributes: ['nombre', 'apodo'] }]
+                },
                 {
                     model: DetalleComida,
                     include: [
-                        { model: Comida, attributes: ['nombre'] }
+                        { model: Comida, attributes: ['nombre', 'tipo'] }
                     ]
                 },
                 {
@@ -40,7 +43,10 @@ export const getJuntadaById = async (req: Request, res: Response) => {
         const juntada = await Juntada.findOne({
             where: { id, grupoId },
             include: [
-                { model: Sede },
+                {
+                    model: Sede,
+                    include: [{ model: Persona, as: 'Dueño', attributes: ['nombre', 'apodo'] }]
+                },
                 {
                     model: DetalleComida,
                     include: [

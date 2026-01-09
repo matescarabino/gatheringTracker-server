@@ -32,7 +32,7 @@ DetalleComida.init(
             }
         },
         categoria: {
-            type: DataTypes.ENUM('Almuerzo', 'Merienda', 'Cena'),
+            type: DataTypes.ENUM('Almuerzo', 'Merienda', 'Cena', 'Postre'),
             allowNull: false,
             defaultValue: 'Cena'
         },
