@@ -1,6 +1,6 @@
 /// <reference path="../types/express.d.ts" />
 import { Request, Response } from 'express';
-import { Persona } from '../models';
+import { Persona, Asistencia } from '../models';
 
 export const getPersonas = async (req: Request, res: Response) => {
     try {
@@ -8,7 +8,11 @@ export const getPersonas = async (req: Request, res: Response) => {
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
 
         const personas = await Persona.findAll({
-            where: { isDeleted: false, grupoId }
+            where: { isDeleted: false, grupoId },
+            include: [{
+                model: Asistencia,
+                attributes: ['id', 'cocino', 'lavo', 'compras']
+            }]
         });
         res.json(personas);
     } catch (error) {
