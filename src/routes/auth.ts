@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { syncUser, createGroup, validateGroupCode } from '../controllers/authController';
+import { syncUser, createGroup, updateGroup, validateGroupCode } from '../controllers/authController';
 import { requireAuth, identifyUser } from '../middleware/auth';
 
 const router = Router();
@@ -10,6 +10,7 @@ router.post('/sync', syncUser); // syncUser handles token verification manually
 // Only createGroup needs requireAuth (DB user must exist).
 
 router.post('/groups', identifyUser, requireAuth, createGroup);
+router.put('/groups', identifyUser, requireAuth, updateGroup);
 router.post('/groups/validate', validateGroupCode);
 
 export default router;

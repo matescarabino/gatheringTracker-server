@@ -13,6 +13,50 @@ export const syncUser = async (req: Request, res: Response) => {
     // Actually, verifyAdmin fails if user not in DB. So for SYNC we need loose verification or manual.
     // Let's do manual token verification here to allow "First Time Login".
 
+    // Local Dev Bypass
+    if (process.env.SKIP_AUTH === 'true') {
+        try {
+            const mockEmail = 'admin@local.dev';
+            const mockUser = {
+                id: '00000000-0000-0000-0000-000000000001',
+                email: mockEmail,
+                user_metadata: {
+                    name: 'Local Admin',
+                    avatar_url: 'https://ui-avatars.com/api/?name=Local+Admin'
+                }
+            };
+
+            const { id, email, user_metadata } = mockUser;
+            const nombre = user_metadata.name;
+            const avatarUrl = user_metadata.avatar_url;
+
+            // Ensure DB is ready or handle error if table missing
+            const [usuario, created] = await Usuario.findOrCreate({
+                where: { id },
+                defaults: { id, email: email!, nombre, avatarUrl }
+            });
+
+            if (!created) {
+                await usuario.update({ email: email!, nombre, avatarUrl });
+            }
+
+            const group = await Grupo.findOne({ where: { adminId: id } });
+
+            return res.json({
+                user: usuario,
+                hasGroup: !!group,
+                group: group
+            });
+        } catch (error: any) {
+            console.error('Local Auth Error:', error);
+            return res.status(500).json({
+                error: 'Local Auth Failed',
+                message: error.message,
+                stack: error.stack // helpful for debugging in frontend console
+            });
+        }
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'No token' });
     const token = authHeader.replace('Bearer ', '');
@@ -102,5 +146,30 @@ export const validateGroupCode = async (req: Request, res: Response) => {
         res.json({ valid: true, groupName: grupo.nombre, codigo: grupo.codigo });
     } catch (error) {
         res.status(500).json({ error: 'Validation failed' });
+    }
+};
+
+export const updateGroup = async (req: Request, res: Response) => {
+    try {
+        const { nombre, minAsistenciasNuevaJuntada } = req.body;
+
+        if (!req.usuario) return res.status(401).json({ error: 'User required' });
+
+        // Find group by adminId (Only admin can update)
+        const grupo = await Grupo.findOne({ where: { adminId: req.usuario.id } });
+
+        if (!grupo) {
+            return res.status(404).json({ error: 'Group not found or you are not the admin' });
+        }
+
+        await grupo.update({
+            nombre: nombre || grupo.nombre,
+            minAsistenciasNuevaJuntada: minAsistenciasNuevaJuntada !== undefined ? minAsistenciasNuevaJuntada : grupo.minAsistenciasNuevaJuntada
+        });
+
+        res.json(grupo);
+    } catch (error) {
+        console.error('Update Group Error:', error);
+        res.status(500).json({ error: 'Update failed' });
     }
 };

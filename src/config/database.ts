@@ -15,14 +15,17 @@ const dbUser = process.env.DB_USER || 'postgres';
 const dbPass = process.env.DB_PASS || 'postgres';
 const dbHost = process.env.DB_HOST || 'localhost';
 
-const sequelize = databaseUrl
+// Force local DB if SKIP_AUTH is true
+const isLocalMode = process.env.SKIP_AUTH === 'true';
+
+const sequelize = (databaseUrl && !isLocalMode)
     ? new Sequelize(databaseUrl, {
         dialect: 'postgres',
         logging: false,
         dialectOptions: {
             ssl: {
                 require: true,
-                rejectUnauthorized: false // Necesario para conexiones SSL de Supabase/Render en modo gratuito a veces
+                rejectUnauthorized: false
             }
         }
     })

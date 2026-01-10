@@ -13,7 +13,25 @@ const supabase = createClient(supabaseUrl!, supabaseKey!);
 
 // 1. Identify User (Optional Auth)
 // Checks token, sets req.usuario if valid. Does NOT block request if missing/invalid.
+// 1. Identify User (Optional Auth)
+// Checks token, sets req.usuario if valid. Does NOT block request if missing/invalid.
 export const identifyUser = async (req: Request, res: Response, next: NextFunction) => {
+    // SKIP AUTH FOR LOCAL DEV
+    if (process.env.SKIP_AUTH === 'true') {
+        const mockEmail = 'admin@local.dev';
+        let user = await Usuario.findOne({ where: { email: mockEmail } });
+        if (!user) {
+            user = await Usuario.create({
+                id: '00000000-0000-0000-0000-000000000001',
+                email: mockEmail,
+                nombre: 'Local Admin',
+                avatarUrl: 'https://ui-avatars.com/api/?name=Local+Admin'
+            });
+        }
+        req.usuario = user;
+        return next();
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader) return next();
 
