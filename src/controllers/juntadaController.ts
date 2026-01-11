@@ -28,7 +28,17 @@ export const getJuntadas = async (req: Request, res: Response) => {
             ],
             order: [['fecha', 'DESC']]
         });
-        res.json(juntadas);
+        const juntadasWithCount = juntadas.map(j => {
+            const plainJuntada = j.get({ plain: true });
+            // Handle Sequelize returning 'Asistencia' (singular) or 'Asistencias' (plural)
+            const asistenciaList = plainJuntada.Asistencia || plainJuntada.Asistencias || [];
+            return {
+                ...plainJuntada,
+                cantAsistentes: asistenciaList.length
+            };
+        });
+
+        res.json(juntadasWithCount);
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving juntadas', error });
     }

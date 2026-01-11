@@ -12,7 +12,10 @@ export const getPersonas = async (req: Request, res: Response) => {
             include: [{
                 model: Asistencia,
                 attributes: ['id', 'cocino', 'lavo', 'compras']
-            }]
+            }],
+            order: [
+                ['nombre', 'DESC']
+            ]
         });
         res.json(personas);
     } catch (error) {
