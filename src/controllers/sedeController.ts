@@ -7,11 +7,36 @@ export const getSedes = async (req: Request, res: Response) => {
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
 
-        const sedes = await Sede.findAll({
+        const page = parseInt(req.query.page as string) || 1;
+        let limit: number | undefined = parseInt(req.query.limit as string) || 15;
+        let offset: number | undefined = (page - 1) * limit;
+
+        if (req.query.limit === '-1') {
+            limit = undefined;
+            offset = undefined;
+        }
+
+        const sortField = (req.query.sortField as string) || 'nombre';
+        const sortOrder = (req.query.sortOrder as string) === 'DESC' ? 'DESC' : 'ASC'; // Default ASC for Sedes
+
+        const { count, rows } = await Sede.findAndCountAll({
             where: { isDeleted: false, grupoId },
-            include: ['Dueño']
+            include: ['Dueño'],
+            order: [[sortField, sortOrder]],
+            limit,
+            offset,
+            distinct: true
         });
-        res.json(sedes);
+
+        res.json({
+            data: rows,
+            meta: {
+                total: count,
+                page,
+                limit: limit || count,
+                totalPages: limit ? Math.ceil(count / limit) : 1
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving sedes', error });
     }

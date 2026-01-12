@@ -8,7 +8,20 @@ export const getJuntadas = async (req: Request, res: Response) => {
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
 
-        const juntadas = await Juntada.findAll({
+        const page = parseInt(req.query.page as string) || 1;
+        let limit: number | undefined = parseInt(req.query.limit as string) || 15;
+        let offset: number | undefined = (page - 1) * limit;
+
+        if (req.query.limit === '-1') {
+            limit = undefined;
+            offset = undefined;
+        }
+
+        // Sorting
+        const sortField = (req.query.sortField as string) || 'fecha';
+        const sortOrder = (req.query.sortOrder as string) === 'ASC' ? 'ASC' : 'DESC';
+
+        const { count, rows } = await Juntada.findAndCountAll({
             where: { isDeleted: false, grupoId },
             include: [
                 {
@@ -26,11 +39,14 @@ export const getJuntadas = async (req: Request, res: Response) => {
                     include: [{ model: Persona, attributes: ['nombre', 'apodo'] }]
                 }
             ],
-            order: [['fecha', 'DESC']]
+            order: [[sortField, sortOrder]],
+            limit,
+            offset,
+            distinct: true // Important for correct count with includes
         });
-        const juntadasWithCount = juntadas.map(j => {
+
+        const juntadasWithCount = rows.map(j => {
             const plainJuntada = j.get({ plain: true });
-            // Handle Sequelize returning 'Asistencia' (singular) or 'Asistencias' (plural)
             const asistenciaList = plainJuntada.Asistencia || plainJuntada.Asistencias || [];
             return {
                 ...plainJuntada,
@@ -38,7 +54,15 @@ export const getJuntadas = async (req: Request, res: Response) => {
             };
         });
 
-        res.json(juntadasWithCount);
+        res.json({
+            data: juntadasWithCount,
+            meta: {
+                total: count,
+                page,
+                limit: limit || count, // if no limit, effective limit is total (or just say count)
+                totalPages: limit ? Math.ceil(count / limit) : 1
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving juntadas', error });
     }

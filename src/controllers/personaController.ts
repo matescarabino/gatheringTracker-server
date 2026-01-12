@@ -7,17 +7,39 @@ export const getPersonas = async (req: Request, res: Response) => {
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
 
-        const personas = await Persona.findAll({
+        const page = parseInt(req.query.page as string) || 1;
+        let limit: number | undefined = parseInt(req.query.limit as string) || 15;
+        let offset: number | undefined = (page - 1) * limit;
+
+        if (req.query.limit === '-1') {
+            limit = undefined;
+            offset = undefined;
+        }
+
+        const sortField = (req.query.sortField as string) || 'nombre';
+        const sortOrder = (req.query.sortOrder as string) === 'ASC' ? 'ASC' : 'DESC';
+
+        const { count, rows } = await Persona.findAndCountAll({
             where: { isDeleted: false, grupoId },
             include: [{
                 model: Asistencia,
                 attributes: ['id', 'cocino', 'lavo', 'compras']
             }],
-            order: [
-                ['nombre', 'DESC']
-            ]
+            order: [[sortField, sortOrder]],
+            limit,
+            offset,
+            distinct: true
         });
-        res.json(personas);
+
+        res.json({
+            data: rows,
+            meta: {
+                total: count,
+                page,
+                limit: limit || count,
+                totalPages: limit ? Math.ceil(count / limit) : 1
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving personas', error });
     }
