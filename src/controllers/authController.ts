@@ -8,11 +8,6 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUP
 const supabase = createClient(supabaseUrl!, supabaseKey!);
 
 export const syncUser = async (req: Request, res: Response) => {
-    // This endpoint must be protected by verifyAdmin middleware to populate req.usuario if exists,
-    // OR we can manually verify token here if we want to allow new users.
-    // Actually, verifyAdmin fails if user not in DB. So for SYNC we need loose verification or manual.
-    // Let's do manual token verification here to allow "First Time Login".
-
     // Local Dev Bypass
     if (process.env.SKIP_AUTH === 'true') {
         try {
@@ -95,8 +90,6 @@ export const syncUser = async (req: Request, res: Response) => {
 };
 
 export const createGroup = async (req: Request, res: Response) => {
-    // Requires verifyAdmin (which now should pass because we called syncUser first)
-    // But verifyAdmin logic "Usuario.findByPk" works now.
 
     const { nombre } = req.body;
     if (!nombre) return res.status(400).json({ error: 'Name required' });

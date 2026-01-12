@@ -17,11 +17,22 @@ export const getJuntadas = async (req: Request, res: Response) => {
             offset = undefined;
         }
 
-        // Sorting
         const sortField = (req.query.sortField as string) || 'fecha';
         const sortOrder = (req.query.sortOrder as string) === 'ASC' ? 'ASC' : 'DESC';
 
         const { count, rows } = await Juntada.findAndCountAll({
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(`(
+                            SELECT COUNT(*)
+                            FROM "Asistencias" AS "attendance"
+                            WHERE "attendance"."idJuntada" = "Juntada"."id"
+                        )`),
+                        'cantAsistentes'
+                    ]
+                ]
+            },
             where: { isDeleted: false, grupoId },
             include: [
                 {
@@ -33,24 +44,20 @@ export const getJuntadas = async (req: Request, res: Response) => {
                     include: [
                         { model: Comida, attributes: ['nombre', 'tipo'] }
                     ]
-                },
-                {
-                    model: Asistencia,
-                    include: [{ model: Persona, attributes: ['nombre', 'apodo'] }]
                 }
             ],
             order: [[sortField, sortOrder]],
             limit,
             offset,
-            distinct: true // Important for correct count with includes
+            distinct: true
         });
 
         const juntadasWithCount = rows.map(j => {
             const plainJuntada = j.get({ plain: true });
-            const asistenciaList = plainJuntada.Asistencia || plainJuntada.Asistencias || [];
             return {
                 ...plainJuntada,
-                cantAsistentes: asistenciaList.length
+                // Ensure cantAsistentes is a number (sequelize.literal might return string)
+                cantAsistentes: parseInt(plainJuntada.cantAsistentes as any || '0')
             };
         });
 
@@ -59,11 +66,12 @@ export const getJuntadas = async (req: Request, res: Response) => {
             meta: {
                 total: count,
                 page,
-                limit: limit || count, // if no limit, effective limit is total (or just say count)
+                limit: limit || count,
                 totalPages: limit ? Math.ceil(count / limit) : 1
             }
         });
     } catch (error) {
+        console.error('Error getting juntadas:', error);
         res.status(500).json({ message: 'Error retrieving juntadas', error });
     }
 };
@@ -125,17 +133,24 @@ export const createJuntada = async (req: Request, res: Response) => {
             try {
                 parsedDetalles = JSON.parse(detalles);
             } catch (e) {
-                console.error("Error parsing detalles JSON", e);
-                parsedDetalles = [];
+                await t.rollback();
+                return res.status(400).json({ error: 'Invalid JSON format for detalles' });
             }
         }
 
-        if (parsedDetalles && Array.isArray(parsedDetalles)) {
-            const detalleRecords = parsedDetalles.map((d: any) => ({
-                idJuntada: newJuntada.id,
-                idComida: d.idComida,
-                categoria: d.categoria // Now string
-            }));
+        if (parsedDetalles) {
+            if (!Array.isArray(parsedDetalles)) {
+                await t.rollback();
+                return res.status(400).json({ error: 'detalles must be an array' });
+            }
+            const detalleRecords = parsedDetalles.map((d: any) => {
+                if (!d.idComida) throw new Error('Missing idComida in detalles');
+                return {
+                    idJuntada: newJuntada.id,
+                    idComida: d.idComida,
+                    categoria: d.categoria
+                };
+            });
             await DetalleComida.bulkCreate(detalleRecords, { transaction: t });
         }
 
@@ -145,16 +160,23 @@ export const createJuntada = async (req: Request, res: Response) => {
             try {
                 parsedAsistencias = JSON.parse(asistencias);
             } catch (e) {
-                console.error("Error parsing asistencias JSON", e);
-                parsedAsistencias = [];
+                await t.rollback();
+                return res.status(400).json({ error: 'Invalid JSON format for asistencias' });
             }
         }
 
-        if (parsedAsistencias && Array.isArray(parsedAsistencias)) {
-            const asistenciaRecords = parsedAsistencias.map((a: any) => ({
-                ...a,
-                idJuntada: newJuntada.id
-            }));
+        if (parsedAsistencias) {
+            if (!Array.isArray(parsedAsistencias)) {
+                await t.rollback();
+                return res.status(400).json({ error: 'asistencias must be an array' });
+            }
+            const asistenciaRecords = parsedAsistencias.map((a: any) => {
+                if (!a.idPersona) throw new Error('Missing idPersona in asistencias');
+                return {
+                    ...a,
+                    idJuntada: newJuntada.id
+                };
+            });
             await Asistencia.bulkCreate(asistenciaRecords, { transaction: t });
         }
 
@@ -219,18 +241,25 @@ export const updateJuntada = async (req: Request, res: Response) => {
             try {
                 parsedDetalles = JSON.parse(detalles);
             } catch (e) {
-                console.error("Error parsing detalles JSON", e);
-                parsedDetalles = [];
+                await t.rollback();
+                return res.status(400).json({ error: 'Invalid JSON format for detalles' });
             }
         }
 
-        if (parsedDetalles && Array.isArray(parsedDetalles)) {
+        if (parsedDetalles) {
+            if (!Array.isArray(parsedDetalles)) {
+                await t.rollback();
+                return res.status(400).json({ error: 'detalles must be an array' });
+            }
             await DetalleComida.destroy({ where: { idJuntada: id }, transaction: t });
-            const detalleRecords = parsedDetalles.map((d: any) => ({
-                idJuntada: id,
-                idComida: d.idComida,
-                categoria: d.categoria // Now string
-            }));
+            const detalleRecords = parsedDetalles.map((d: any) => {
+                if (!d.idComida) throw new Error('Missing idComida in detalles');
+                return {
+                    idJuntada: id,
+                    idComida: d.idComida,
+                    categoria: d.categoria
+                };
+            });
             await DetalleComida.bulkCreate(detalleRecords, { transaction: t });
         }
 
@@ -240,17 +269,24 @@ export const updateJuntada = async (req: Request, res: Response) => {
             try {
                 parsedAsistencias = JSON.parse(asistencias);
             } catch (e) {
-                console.error("Error parsing asistencias JSON", e);
-                parsedAsistencias = [];
+                await t.rollback();
+                return res.status(400).json({ error: 'Invalid JSON format for asistencias' });
             }
         }
 
-        if (parsedAsistencias && Array.isArray(parsedAsistencias)) {
+        if (parsedAsistencias) {
+            if (!Array.isArray(parsedAsistencias)) {
+                await t.rollback();
+                return res.status(400).json({ error: 'asistencias must be an array' });
+            }
             await Asistencia.destroy({ where: { idJuntada: id }, transaction: t });
-            const asistenciaRecords = parsedAsistencias.map((a: any) => ({
-                ...a,
-                idJuntada: id
-            }));
+            const asistenciaRecords = parsedAsistencias.map((a: any) => {
+                if (!a.idPersona) throw new Error('Missing idPersona in asistencias');
+                return {
+                    ...a,
+                    idJuntada: id
+                };
+            });
             await Asistencia.bulkCreate(asistenciaRecords, { transaction: t });
         }
 
