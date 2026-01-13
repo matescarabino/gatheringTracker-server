@@ -11,6 +11,9 @@ import apiRouter from './routes/api';
 const app = express();
 const port = process.env.PORT || 2404;
 
+// Security: Trust Proxy (Required for Rate Limiter behind proxies like Render)
+app.set('trust proxy', 1);
+
 // Security: Helmet
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" } // Allow loading images from different origins/this origin if needed for client
