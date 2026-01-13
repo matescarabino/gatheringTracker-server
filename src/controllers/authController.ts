@@ -144,7 +144,7 @@ export const validateGroupCode = async (req: Request, res: Response) => {
 
 export const updateGroup = async (req: Request, res: Response) => {
     try {
-        const { nombre, minAsistenciasNuevaJuntada } = req.body;
+        const { nombre, minAsistenciasNuevaJuntada, maxPersonasCocina, maxPersonasCompras } = req.body;
 
         if (!req.usuario) return res.status(401).json({ error: 'User required' });
 
@@ -154,10 +154,11 @@ export const updateGroup = async (req: Request, res: Response) => {
         if (!grupo) {
             return res.status(404).json({ error: 'Group not found or you are not the admin' });
         }
-
         await grupo.update({
             nombre: nombre || grupo.nombre,
-            minAsistenciasNuevaJuntada: minAsistenciasNuevaJuntada !== undefined ? minAsistenciasNuevaJuntada : grupo.minAsistenciasNuevaJuntada
+            minAsistenciasNuevaJuntada: minAsistenciasNuevaJuntada !== undefined ? minAsistenciasNuevaJuntada : grupo.minAsistenciasNuevaJuntada,
+            maxPersonasCocina: maxPersonasCocina !== undefined ? maxPersonasCocina : grupo.maxPersonasCocina,
+            maxPersonasCompras: maxPersonasCompras !== undefined ? maxPersonasCompras : grupo.maxPersonasCompras,
         });
 
         res.json(grupo);

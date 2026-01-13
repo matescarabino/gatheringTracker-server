@@ -41,6 +41,7 @@ export const getJuntadas = async (req: Request, res: Response) => {
                 },
                 {
                     model: DetalleComida,
+                    as: 'DetallesComidas',
                     include: [
                         { model: Comida, attributes: ['nombre', 'tipo'] }
                     ]
@@ -91,12 +92,14 @@ export const getJuntadaById = async (req: Request, res: Response) => {
                 },
                 {
                     model: DetalleComida,
+                    as: 'DetallesComidas',
                     include: [
                         { model: Comida }
                     ]
                 },
                 {
                     model: Asistencia,
+                    as: 'Asistencias',
                     include: [{ model: Persona, attributes: ['nombre', 'apodo'] }]
                 }
             ]
@@ -297,5 +300,40 @@ export const updateJuntada = async (req: Request, res: Response) => {
         await t.rollback();
         console.error(error);
         res.status(500).json({ message: 'Error updating juntada', error });
+    }
+};
+
+export const getStatistics = async (req: Request, res: Response) => {
+    try {
+        const { grupoId } = req;
+        if (!grupoId) return res.status(400).json({ error: 'Group context required' });
+
+        const juntadas = await Juntada.findAll({
+            where: { isDeleted: false, grupoId },
+            include: [
+                {
+                    model: Sede,
+                    attributes: ['id', 'idPersona', 'nombre']
+                },
+                {
+                    model: DetalleComida,
+                    as: 'DetallesComidas',
+                    include: [
+                        { model: Comida, attributes: ['nombre', 'tipo'] }
+                    ]
+                },
+                {
+                    model: Asistencia,
+                    as: 'Asistencias',
+                    include: [{ model: Persona, attributes: ['id', 'nombre', 'apodo'] }]
+                }
+            ],
+            order: [['fecha', 'ASC']]
+        });
+
+        res.json(juntadas);
+    } catch (error) {
+        console.error('Stats Error:', error);
+        res.status(500).json({ error: 'Failed to fetch statistics' });
     }
 };

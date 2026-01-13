@@ -7,9 +7,11 @@ interface GrupoAttributes {
     codigo: string;
     adminId: string; // UUID of the creator/admin
     minAsistenciasNuevaJuntada: number;
+    maxPersonasCocina: number;
+    maxPersonasCompras: number;
 }
 
-interface GrupoCreationAttributes extends Optional<GrupoAttributes, 'id' | 'minAsistenciasNuevaJuntada'> { }
+interface GrupoCreationAttributes extends Optional<GrupoAttributes, 'id' | 'minAsistenciasNuevaJuntada' | 'maxPersonasCocina' | 'maxPersonasCompras'> { }
 
 class Grupo extends Model<GrupoAttributes, GrupoCreationAttributes> implements GrupoAttributes {
     public id!: number;
@@ -17,6 +19,8 @@ class Grupo extends Model<GrupoAttributes, GrupoCreationAttributes> implements G
     public codigo!: string;
     public adminId!: string;
     public minAsistenciasNuevaJuntada!: number;
+    public maxPersonasCocina!: number;
+    public maxPersonasCompras!: number;
 
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
@@ -46,6 +50,16 @@ Grupo.init(
             type: DataTypes.INTEGER,
             allowNull: false,
             defaultValue: 0
+        },
+        maxPersonasCocina: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 2
+        },
+        maxPersonasCompras: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 2
         },
     },
     {

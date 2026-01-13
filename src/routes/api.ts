@@ -60,6 +60,7 @@ router.put('/comidas/:id', ...globalMiddleware, requireAuth, comidaController.up
 router.delete('/comidas/:id', ...globalMiddleware, requireAuth, comidaController.deleteComida);
 
 // Juntadas
+router.get('/juntadas/stats/all', ...globalMiddleware, juntadaController.getStatistics);
 router.get('/juntadas', ...globalMiddleware, juntadaController.getJuntadas);
 router.get('/juntadas/:id', ...globalMiddleware, juntadaController.getJuntadaById);
 router.post('/juntadas', ...globalMiddleware, requireAuth, juntadaController.createJuntada);

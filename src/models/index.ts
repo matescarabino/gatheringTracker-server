@@ -30,13 +30,13 @@ Persona.hasMany(Sede, { foreignKey: 'idPersona', as: 'Sedes' });
 Sede.belongsTo(Persona, { foreignKey: 'idPersona', as: 'Dueño' });
 
 // Juntada - Comida (Via DetalleComida)
-Juntada.hasMany(DetalleComida, { foreignKey: 'idJuntada' });
+Juntada.hasMany(DetalleComida, { foreignKey: 'idJuntada', as: 'DetallesComidas' });
 DetalleComida.belongsTo(Juntada, { foreignKey: 'idJuntada' });
 
 DetalleComida.belongsTo(Comida, { foreignKey: 'idComida' });
 
 // Asistencia
-Juntada.hasMany(Asistencia, { foreignKey: 'idJuntada' });
+Juntada.hasMany(Asistencia, { foreignKey: 'idJuntada', as: 'Asistencias' });
 Asistencia.belongsTo(Juntada, { foreignKey: 'idJuntada' });
 
 Persona.hasMany(Asistencia, { foreignKey: 'idPersona' });
