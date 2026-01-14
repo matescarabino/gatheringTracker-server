@@ -1,76 +1,102 @@
-/// <reference path="../types/express.d.ts" />
 import { Request, Response } from 'express';
-import { Juntada, Sede, Comida, Asistencia, Persona, DetalleComida } from '../models';
+import { optimizeBase64Image } from '../utils/imageOptimizer';
+import { Juntada, Sede, Persona, Comida, Asistencia, DetalleComida } from '../models';
 import sequelize from '../config/database';
 
 export const getJuntadas = async (req: Request, res: Response) => {
+    const requestId = Date.now() + Math.random().toString(36).substring(7);
+    console.time(`getJuntadas_Total_${requestId}`);
     try {
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
 
-        const page = parseInt(req.query.page as string) || 1;
-        let limit: number | undefined = parseInt(req.query.limit as string) || 15;
-        let offset: number | undefined = (page - 1) * limit;
-
-        if (req.query.limit === '-1') {
-            limit = undefined;
-            offset = undefined;
-        }
-
         const sortField = (req.query.sortField as string) || 'fecha';
+        // Default to DESC (newest first) unless ASC is requested
         const sortOrder = (req.query.sortOrder as string) === 'ASC' ? 'ASC' : 'DESC';
 
-        const { count, rows } = await Juntada.findAndCountAll({
-            attributes: {
-                include: [
-                    [
-                        sequelize.literal(`(
-                            SELECT COUNT(*)
-                            FROM "Asistencias" AS "attendance"
-                            WHERE "attendance"."idJuntada" = "Juntada"."id"
-                        )`),
-                        'cantAsistentes'
-                    ]
-                ]
-            },
+        // 1. Fetch Juntadas (Split Query Part 1) - Only Base + Sede
+        console.time(`fetch_Juntadas_${requestId}`);
+        const juntadas = await Juntada.findAll({
             where: { isDeleted: false, grupoId },
             include: [
                 {
                     model: Sede,
                     include: [{ model: Persona, as: 'Dueño', attributes: ['nombre', 'apodo'] }]
-                },
-                {
-                    model: DetalleComida,
-                    as: 'DetallesComidas',
-                    include: [
-                        { model: Comida, attributes: ['nombre', 'tipo'] }
-                    ]
                 }
             ],
             order: [[sortField, sortOrder]],
-            limit,
-            offset,
-            distinct: true
+            raw: true,
+            nest: true
+        });
+        console.timeEnd(`fetch_Juntadas_${requestId}`);
+
+        if (juntadas.length === 0) {
+            console.timeEnd(`getJuntadas_Total_${requestId}`);
+            return res.json([]);
+        }
+
+        // Type assertion for raw result if needed, or just usage
+        const juntadaIds = juntadas.map((j: any) => j.id);
+
+        /**
+         * Server-side Aggregation (Split Query Pattern)
+         * Instead of massive JOINs which cause Cartesian products or slow queries,
+         * we fetch related data in separate efficient queries and merge them in application memory.
+         * Using raw: true avoids expensive Sequelize Model hydration.
+         */
+
+        // 2. Fetch Detalles (Split Query Part 2)
+        console.time(`fetch_Detalles_${requestId}`);
+        const detalles = await DetalleComida.findAll({
+            where: { idJuntada: juntadaIds },
+            include: [
+                { model: Comida, attributes: ['nombre', 'tipo'] }
+            ],
+            raw: true,
+            nest: true
+        });
+        console.timeEnd(`fetch_Detalles_${requestId}`);
+
+        // 3. Fetch Asistencias (Split Query Part 3)
+        console.time(`fetch_Asistencias_${requestId}`);
+        const asistencias = await Asistencia.findAll({
+            where: { idJuntada: juntadaIds },
+            include: [
+                { model: Persona, attributes: ['id', 'nombre', 'apodo'] }
+            ],
+            raw: true,
+            nest: true
+        });
+        console.timeEnd(`fetch_Asistencias_${requestId}`);
+
+        // 4. Assemble Data (Server-side merging)
+        console.time(`assemble_Data_${requestId}`);
+        const detallesMap: Record<number, any[]> = {};
+        detalles.forEach((d: any) => {
+            if (!detallesMap[d.idJuntada]) detallesMap[d.idJuntada] = [];
+            detallesMap[d.idJuntada].push(d);
         });
 
-        const juntadasWithCount = rows.map(j => {
-            const plainJuntada = j.get({ plain: true });
+        const asistenciasMap: Record<number, any[]> = {};
+        asistencias.forEach((a: any) => {
+            if (!asistenciasMap[a.idJuntada]) asistenciasMap[a.idJuntada] = [];
+            asistenciasMap[a.idJuntada].push(a);
+        });
+
+        const fullJuntadas = juntadas.map((j: any) => {
+            // Raw objects don't need .get({plain: true})
             return {
-                ...plainJuntada,
-                // Ensure cantAsistentes is a number (sequelize.literal might return string)
-                cantAsistentes: parseInt(plainJuntada.cantAsistentes as any || '0')
+                ...j,
+                DetallesComidas: detallesMap[j.id] || [],
+                Asistencias: asistenciasMap[j.id] || [],
+                cantAsistentes: (asistenciasMap[j.id] || []).length
             };
         });
+        console.timeEnd(`assemble_Data_${requestId}`);
 
-        res.json({
-            data: juntadasWithCount,
-            meta: {
-                total: count,
-                page,
-                limit: limit || count,
-                totalPages: limit ? Math.ceil(count / limit) : 1
-            }
-        });
+        console.timeEnd(`getJuntadas_Total_${requestId}`);
+        // Return full array (No backend pagination)
+        res.json(fullJuntadas);
     } catch (error) {
         console.error('Error getting juntadas:', error);
         res.status(500).json({ message: 'Error retrieving juntadas', error });
@@ -123,10 +149,16 @@ export const createJuntada = async (req: Request, res: Response) => {
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
 
+        // Optimize Image
+        let optimizedFoto = fotoJuntada;
+        if (fotoJuntada) {
+            optimizedFoto = await optimizeBase64Image(fotoJuntada);
+        }
+
         const newJuntada = await Juntada.create({
             fecha,
             idSede,
-            fotoJuntada,
+            fotoJuntada: optimizedFoto,
             grupoId
         }, { transaction: t });
 
@@ -232,10 +264,16 @@ export const updateJuntada = async (req: Request, res: Response) => {
             return;
         }
 
+        // Optimize Image
+        let optimizedFoto = fotoJuntada;
+        if (fotoJuntada) {
+            optimizedFoto = await optimizeBase64Image(fotoJuntada);
+        }
+
         await juntada.update({
             fecha,
             idSede,
-            fotoJuntada
+            fotoJuntada: optimizedFoto
         }, { transaction: t });
 
         // Update Detalles

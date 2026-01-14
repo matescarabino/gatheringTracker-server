@@ -49,6 +49,10 @@ Asistencia.init(
     {
         sequelize,
         tableName: 'Asistencias',
+        indexes: [
+            { fields: ['idJuntada'] },
+            { fields: ['idPersona'] }
+        ]
     }
 );
 

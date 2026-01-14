@@ -40,7 +40,10 @@ DetalleComida.init(
     {
         sequelize,
         tableName: 'DetalleComidas',
-        timestamps: false
+        timestamps: false,
+        indexes: [
+            { fields: ['idJuntada'] }
+        ]
     }
 );
 

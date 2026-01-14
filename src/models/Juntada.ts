@@ -50,6 +50,10 @@ Juntada.init(
     {
         sequelize,
         tableName: 'Juntadas',
+        indexes: [
+            { fields: ['grupoId'] },
+            { fields: ['idSede'] }
+        ]
     }
 );
 
