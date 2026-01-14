@@ -308,30 +308,65 @@ export const getStatistics = async (req: Request, res: Response) => {
         const { grupoId } = req;
         if (!grupoId) return res.status(400).json({ error: 'Group context required' });
 
+        // 1. Fetch Juntadas (Base)
         const juntadas = await Juntada.findAll({
             where: { isDeleted: false, grupoId },
             include: [
                 {
                     model: Sede,
                     attributes: ['id', 'idPersona', 'nombre']
-                },
-                {
-                    model: DetalleComida,
-                    as: 'DetallesComidas',
-                    include: [
-                        { model: Comida, attributes: ['nombre', 'tipo'] }
-                    ]
-                },
-                {
-                    model: Asistencia,
-                    as: 'Asistencias',
-                    include: [{ model: Persona, attributes: ['id', 'nombre', 'apodo'] }]
                 }
             ],
             order: [['fecha', 'ASC']]
         });
 
-        res.json(juntadas);
+        if (juntadas.length === 0) {
+            return res.json([]);
+        }
+
+        const juntadaIds = juntadas.map(j => j.id);
+
+        // 2. Fetch Detalles (Separate Query)
+        const detalles = await DetalleComida.findAll({
+            where: { idJuntada: juntadaIds },
+            include: [
+                { model: Comida, attributes: ['nombre', 'tipo'] }
+            ]
+        });
+
+        // 3. Fetch Asistencias (Separate Query)
+        const asistencias = await Asistencia.findAll({
+            where: { idJuntada: juntadaIds },
+            include: [
+                { model: Persona, attributes: ['id', 'nombre', 'apodo'] }
+            ]
+        });
+
+        // 4. Assemble Data
+        // Create lookup maps for performance
+        const detallesMap: Record<number, any[]> = {};
+        detalles.forEach(d => {
+            if (!detallesMap[d.idJuntada]) detallesMap[d.idJuntada] = [];
+            detallesMap[d.idJuntada].push(d);
+        });
+
+        const asistenciasMap: Record<number, any[]> = {};
+        asistencias.forEach(a => {
+            if (!asistenciasMap[a.idJuntada]) asistenciasMap[a.idJuntada] = [];
+            asistenciasMap[a.idJuntada].push(a);
+        });
+
+        // Merge back into plain objects
+        const fullJuntadas = juntadas.map(j => {
+            const plainJuntada = j.get({ plain: true });
+            return {
+                ...plainJuntada,
+                DetallesComidas: detallesMap[j.id] || [],
+                Asistencias: asistenciasMap[j.id] || []
+            };
+        });
+
+        res.json(fullJuntadas);
     } catch (error) {
         console.error('Stats Error:', error);
         res.status(500).json({ error: 'Failed to fetch statistics' });
